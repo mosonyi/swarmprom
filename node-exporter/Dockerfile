@@ -1,4 +1,5 @@
-FROM prom/node-exporter:v0.16.0
+ARG NODE_EXPORTER_VERSION
+FROM prom/node-exporter:${NODE_EXPORTER_VERSION}
 
 ENV NODE_ID=none
 

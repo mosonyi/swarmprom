@@ -1,4 +1,5 @@
-FROM prom/prometheus:v2.5.0
+ARG PROMETHEUS_VERSION
+FROM prom/prometheus:${PROMETHEUS_VERSION}
 # https://hub.docker.com/r/prom/prometheus/tags/
 
 ENV WEAVE_TOKEN=none
