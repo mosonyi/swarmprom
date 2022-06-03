@@ -18,11 +18,10 @@ PORT=$(echo "$job" | cut -d":" -f2)
 cat >>/tmp/prometheus.yml <<EOF
 
   - job_name: '${SERVICE}'
-    dns_sd_configs:
-    - names:
-      - 'tasks.${SERVICE}'
-      type: 'A'
-      port: ${PORT}
+    static_configs:
+      - targets: [
+        '${SERVICE}'
+      ]
 EOF
 
 cat >>/tmp/weave-cortex.yml <<EOF
