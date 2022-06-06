@@ -7,7 +7,10 @@ cat /etc/alertmanager/alertmanager.yml |\
 
 mv /tmp/alertmanager.yml /etc/alertmanager/alertmanager.yml
 
-echo /etc/alertmanager/alertmanager_extra.yml >> /etc/alertmanager/alertmanager.yml
+if [ -f /etc/alertmanager/alertmanager_overwrite.yml ] 
+then
+  echo /etc/alertmanager/alertmanager_overwrite.yml > /etc/alertmanager/alertmanager.yml
+fi
 
 set -- /bin/alertmanager "$@"
 
