@@ -7,6 +7,8 @@ cat /etc/alertmanager/alertmanager.yml |\
 
 mv /tmp/alertmanager.yml /etc/alertmanager/alertmanager.yml
 
+echo /etc/alertmanager/alertmanager_extra.yml >> /etc/alertmanager/alertmanager.yml
+
 set -- /bin/alertmanager "$@"
 
 exec "$@"
