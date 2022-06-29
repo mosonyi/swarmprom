@@ -81,9 +81,35 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
+      - name: Build and push Promtail
+        id:   docker_build_promtail
+        uses: docker/build-push-action@v3
+        with:
+          build-args: PROMTAIL_VERSION=${{ env.PROMTAIL_VERSION }}
+          push: true
+          context: promtail
+          tags: |
+            mosonyi/swarmprom-promtail:${{ env.PROMTAIL_VERSION }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Build and push Loki
+        id:   docker_build_loki
+        uses: docker/build-push-action@v3
+        with:
+          build-args: LOKI_VERSION=${{ env.LOKI_VERSION }}
+          push: true
+          context: loki
+          tags: |
+            mosonyi/swarmprom-loki:${{ env.LOKI_VERSION }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
       - name: Image digest
         run: |
           echo ${{ steps.docker_build_prometheus.outputs.digest }}
           echo ${{ steps.docker_build_node-exporter.outputs.digest }}
           echo ${{ steps.docker_build_alertmanager.outputs.digest }}
           echo ${{ steps.docker_build_grafana.outputs.digest }}
+          echo ${{ steps.docker_build_promtail.outputs.digest }}
+          echo ${{ steps.docker_build_loki.outputs.digest }}

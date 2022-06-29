@@ -1,9 +1,11 @@
-version: "3.3"
+version: "3.8"
 
 networks:
   net:
     driver: overlay
     attachable: true
+  loki:
+    external: true
   traefik-public:
     external: true
 
@@ -11,14 +13,22 @@ volumes:
     prometheus: {}
     grafana: {}
     alertmanager: {}
+    loki-data: {}
+    promtail-data: {}
 
 configs:
   dockerd_config:
-    file: ./dockerd-exporter/Caddyfile
+    external:
+      name: dockerd_config
   node_rules:
-    file: ./prometheus/rules/swarm_node.rules.yml
+    external:
+      name: node_rules
   task_rules:
-    file: ./prometheus/rules/swarm_task.rules.yml
+    external:
+      name: task_rules
+  alertmanager_extra_config:
+    external:
+      name: alertmanager_extra_config
 
 services:
   dockerd-exporter:
@@ -26,7 +36,7 @@ services:
     networks:
       - net
     environment:
-      - DOCKER_GWBRIDGE_IP=172.18.0.1
+      - DOCKER_GWBRIDGE_IP=172.21.0.1
     configs:
       - source: dockerd_config
         target: /etc/caddy/Caddyfile
@@ -45,6 +55,7 @@ services:
     command: -logtostderr -docker_only
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/rootfs:ro
       - /var/run:/var/run
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
@@ -57,8 +68,9 @@ services:
           memory: 64M
 
   grafana:
-    image: stefanprodan/swarmprom-grafana:5.3.4
+    image: mosonyi/swarmprom-grafana:8.5.4
     networks:
+      - loki
       - default
       - net
       - traefik-public
@@ -90,21 +102,25 @@ services:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
         - traefik.constraint-label=traefik-public
-        - traefik.http.routers.swarmprom-grafana-http.rule=Host(`grafana.${DOMAIN?Variable DOMAIN not set}`)
+        - traefik.http.routers.swarmprom-grafana-http.rule=Host(`grafana.${DOMAIN?Variable not set}`)
         - traefik.http.routers.swarmprom-grafana-http.entrypoints=http
         - traefik.http.routers.swarmprom-grafana-http.middlewares=https-redirect
-        - traefik.http.routers.swarmprom-grafana-https.rule=Host(`grafana.${DOMAIN?Variable DOMAIN not set}`)
+        - traefik.http.routers.swarmprom-grafana-https.rule=Host(`grafana.${DOMAIN?Variable not set}`)
         - traefik.http.routers.swarmprom-grafana-https.entrypoints=https
         - traefik.http.routers.swarmprom-grafana-https.tls=true
         - traefik.http.routers.swarmprom-grafana-https.tls.certresolver=le
         - traefik.http.services.swarmprom-grafana.loadbalancer.server.port=3000
 
   alertmanager:
-    image: stefanprodan/swarmprom-alertmanager:v0.14.0
+    image: mosonyi/swarmprom-alertmanager:v0.24.0
     networks:
       - default
       - net
       - traefik-public
+      - loki
+    configs:
+      - source: alertmanager_extra_config
+        target: /etc/alertmanager/alertmanager_overwrite.yml
     environment:
       - SLACK_URL=${SLACK_URL:-https://hooks.slack.com/services/TOKEN}
       - SLACK_CHANNEL=${SLACK_CHANNEL:-general}
@@ -112,6 +128,8 @@ services:
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
+      - '--log.level=debug'
+      - '--web.external-url=https://alertmanager.${DOMAIN?Variable not set}'
     volumes:
       - alertmanager:/alertmanager
     deploy:
@@ -129,53 +147,29 @@ services:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
         - traefik.constraint-label=traefik-public
-        - traefik.http.routers.swarmprom-alertmanager-http.rule=Host(`alertmanager.${DOMAIN?Variable DOMAIN not set}`)
+        - traefik.http.routers.swarmprom-alertmanager-http.rule=Host(`alertmanager.${DOMAIN?Variable not set}`)
         - traefik.http.routers.swarmprom-alertmanager-http.entrypoints=http
         - traefik.http.routers.swarmprom-alertmanager-http.middlewares=https-redirect
-        - traefik.http.routers.swarmprom-alertmanager-https.rule=Host(`alertmanager.${DOMAIN?Variable DOMAIN not set}`)
+        - traefik.http.routers.swarmprom-alertmanager-https.rule=Host(`alertmanager.${DOMAIN?Variable not set}`)
         - traefik.http.routers.swarmprom-alertmanager-https.entrypoints=https
         - traefik.http.routers.swarmprom-alertmanager-https.tls=true
         - traefik.http.routers.swarmprom-alertmanager-https.tls.certresolver=le
         - traefik.http.services.swarmprom-alertmanager.loadbalancer.server.port=9093
-        - traefik.http.middlewares.swarmprom-alertmanager-auth.basicauth.users=${ADMIN_USER?Variable ADMIN_USER not set}:${HASHED_PASSWORD?Variable HASHED_PASSWORD not set}
+        - traefik.http.middlewares.swarmprom-alertmanager-auth.basicauth.users=${ADMIN_USER?Variable not set}:${HASHED_PASSWORD?Variable not set}
         - traefik.http.routers.swarmprom-alertmanager-https.middlewares=swarmprom-alertmanager-auth
 
-  unsee:
-    image: cloudflare/unsee:v0.8.0
-    networks:
-      - default
-      - net
-      - traefik-public
-    environment:
-      - "ALERTMANAGER_URIS=default:http://alertmanager:9093"
-    deploy:
-      mode: replicated
-      replicas: 1
-      labels:
-        - traefik.enable=true
-        - traefik.docker.network=traefik-public
-        - traefik.constraint-label=traefik-public
-        - traefik.http.routers.swarmprom-unsee-http.rule=Host(`unsee.${DOMAIN?Variable DOMAIN not set}`)
-        - traefik.http.routers.swarmprom-unsee-http.entrypoints=http
-        - traefik.http.routers.swarmprom-unsee-http.middlewares=https-redirect
-        - traefik.http.routers.swarmprom-unsee-https.rule=Host(`unsee.${DOMAIN?Variable DOMAIN not set}`)
-        - traefik.http.routers.swarmprom-unsee-https.entrypoints=https
-        - traefik.http.routers.swarmprom-unsee-https.tls=true
-        - traefik.http.routers.swarmprom-unsee-https.tls.certresolver=le
-        - traefik.http.services.swarmprom-unsee.loadbalancer.server.port=8080
-        - traefik.http.middlewares.swarmprom-unsee-auth.basicauth.users=${ADMIN_USER?Variable ADMIN_USER not set}:${HASHED_PASSWORD?Variable HASHED_PASSWORD not set}
-        - traefik.http.routers.swarmprom-unsee-https.middlewares=swarmprom-unsee-auth
+
 
   node-exporter:
-    image: stefanprodan/swarmprom-node-exporter:v0.16.0
+    image: mosonyi/swarmprom-node-exporter:v1.3.1
     networks:
       - net
     environment:
       - NODE_ID={{.Node.ID}}
     volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /etc/hostname:/etc/nodename
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+      - '/etc/hostname:/etc/nodename'
     command:
       - '--path.sysfs=/host/sys'
       - '--path.procfs=/host/proc'
@@ -189,17 +183,55 @@ services:
           memory: 128M
         reservations:
           memory: 64M
+          
+  loki:
+    image: mosonyi/swarmprom-loki:2.5.0
+    ports:
+      - "3100:3100"
+    configs:
+      - source: loki_config
+        target: /etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/data/loki
+    networks:
+      - loki
+    healthcheck:
+      test: wget -q --tries=1 -O- http://127.0.0.1:3100/ready|grep -q "ready"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  promtail:
+    image: mosonyi/swarmprom-promtail:2.5.0
+    hostname: "{{.Node.Hostname}}"
+    volumes:
+      - promtail-data:/tmp
+      - /var/log:/var/log
+    command: -config.expand-env
+    networks:
+      - loki
+    deploy:
+      mode: global
 
   prometheus:
-    image: stefanprodan/swarmprom-prometheus:v2.5.0
+    image: mosonyi/swarmprom-prometheus:v2.36.0
     networks:
       - default
       - net
       - traefik-public
+      - loki
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention=${PROMETHEUS_RETENTION:-24h}'
+      - '--web.external-url=https://prometheus.${DOMAIN?Variable not set}'
     volumes:
       - prometheus:/prometheus
     configs:
@@ -207,6 +239,8 @@ services:
         target: /etc/prometheus/swarm_node.rules.yml
       - source: task_rules
         target: /etc/prometheus/swarm_task.rules.yml
+    environment:
+      - JOBS=${JOBS?}
     deploy:
       mode: replicated
       replicas: 1
@@ -222,13 +256,13 @@ services:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
         - traefik.constraint-label=traefik-public
-        - traefik.http.routers.swarmprom-prometheus-http.rule=Host(`prometheus.${DOMAIN?Variable DOMAIN not set}`)
+        - traefik.http.routers.swarmprom-prometheus-http.rule=Host(`prometheus.${DOMAIN?Variable not set}`)
         - traefik.http.routers.swarmprom-prometheus-http.entrypoints=http
         - traefik.http.routers.swarmprom-prometheus-http.middlewares=https-redirect
-        - traefik.http.routers.swarmprom-prometheus-https.rule=Host(`prometheus.${DOMAIN?Variable DOMAIN not set}`)
+        - traefik.http.routers.swarmprom-prometheus-https.rule=Host(`prometheus.${DOMAIN?Variable not set}`)
         - traefik.http.routers.swarmprom-prometheus-https.entrypoints=https
         - traefik.http.routers.swarmprom-prometheus-https.tls=true
         - traefik.http.routers.swarmprom-prometheus-https.tls.certresolver=le
         - traefik.http.services.swarmprom-prometheus.loadbalancer.server.port=9090
-        - traefik.http.middlewares.swarmprom-prometheus-auth.basicauth.users=${ADMIN_USER?Variable ADMIN_USER not set}:${HASHED_PASSWORD?Variable HASHED_PASSWORD not set}
+        - traefik.http.middlewares.swarmprom-prometheus-auth.basicauth.users=${ADMIN_USER?Variable not set}:${HASHED_PASSWORD?Variable not set}
         - traefik.http.routers.swarmprom-prometheus-https.middlewares=swarmprom-prometheus-auth
