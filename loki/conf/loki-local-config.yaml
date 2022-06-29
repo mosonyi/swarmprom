@@ -22,9 +22,9 @@ common:
   ring:
     kvstore:
       store: inmemory
-    instance_interface_names:
+    instance_interface_names: # https://community.grafana.com/t/loki-error-on-port-9095-error-contacting-scheduler/67263/2
       - "lo"
-  instance_interface_names:
+  instance_interface_names: # https://community.grafana.com/t/loki-error-on-port-9095-error-contacting-scheduler/67263/2
     - "lo"
       
 schema_config:
