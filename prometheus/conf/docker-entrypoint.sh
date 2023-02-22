@@ -38,6 +38,10 @@ done
 
 fi
 
+if [ -f /etc/prometheus/custom-scrape.yml ]; then
+  cat /etc/prometheus/custom-scrape.yml >> /tmp/prometheus.yml 
+fi
+
 mv /tmp/prometheus.yml /etc/prometheus/prometheus.yml
 mv /tmp/weave-cortex.yml /etc/prometheus/weave-cortex.yml
 

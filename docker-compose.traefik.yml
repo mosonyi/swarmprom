@@ -26,6 +26,9 @@ configs:
   task_rules:
     external:
       name: task_rules
+  custom_scrape:
+    external:
+      name: custom_scrape
   alertmanager_extra_config:
     external:
       name: alertmanager_extra_config
@@ -69,7 +72,7 @@ services:
           memory: 64M
 
   grafana:
-    image: mosonyi/swarmprom-grafana:8.5.4
+    image: mosonyi/swarmprom-grafana:9.3.6
     networks:
       - loki
       - default
@@ -113,7 +116,7 @@ services:
         - traefik.http.services.swarmprom-grafana.loadbalancer.server.port=3000
 
   alertmanager:
-    image: mosonyi/swarmprom-alertmanager:v0.24.0
+    image: mosonyi/swarmprom-alertmanager:v0.25.0
     networks:
       - default
       - net
@@ -186,7 +189,7 @@ services:
           memory: 64M
           
   loki:
-    image: mosonyi/swarmprom-loki:2.5.0
+    image: mosonyi/swarmprom-loki:2.7.3
     ports:
       - "3100:3100"
     configs:
@@ -210,7 +213,7 @@ services:
           - node.role == manager
 
   promtail:
-    image: mosonyi/swarmprom-promtail:2.5.0
+    image: mosonyi/swarmprom-promtail:2.7.3
     hostname: "{{.Node.Hostname}}"
     volumes:
       - promtail-data:/tmp
@@ -222,7 +225,7 @@ services:
       mode: global
 
   prometheus:
-    image: mosonyi/swarmprom-prometheus:v2.36.0
+    image: mosonyi/swarmprom-prometheus:v2.42.0
     networks:
       - default
       - net
@@ -242,6 +245,8 @@ services:
         target: /etc/prometheus/swarm_task.rules.yml
       - source: custom_rules
         target: /etc/prometheus/custom.rules.yml
+      - source: custom_scrape
+        target: /etc/prometheus/custom-scrape.yml
     environment:
       - JOBS=${JOBS?}
     deploy:
