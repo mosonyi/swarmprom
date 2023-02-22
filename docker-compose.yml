@@ -159,6 +159,8 @@ services:
         target: /etc/prometheus/swarm_node.rules.yml
       - source: task_rules
         target: /etc/prometheus/swarm_task.rules.yml
+      - source: custom_rules
+        target: /etc/prometheus/custom.rules.yml
     deploy:
       mode: replicated
       replicas: 1

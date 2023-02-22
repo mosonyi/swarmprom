@@ -35,6 +35,7 @@ services:
     image: stefanprodan/caddy
     networks:
       - net
+      - traefik-public
     environment:
       - DOCKER_GWBRIDGE_IP=172.21.0.1
     configs:
@@ -239,6 +240,8 @@ services:
         target: /etc/prometheus/swarm_node.rules.yml
       - source: task_rules
         target: /etc/prometheus/swarm_task.rules.yml
+      - source: custom_rules
+        target: /etc/prometheus/custom.rules.yml
     environment:
       - JOBS=${JOBS?}
     deploy:
