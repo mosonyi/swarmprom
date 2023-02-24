@@ -4,7 +4,28 @@ cat /etc/prometheus/prometheus.yml > /tmp/prometheus.yml
 cat /etc/prometheus/weave-cortex.yml | \
     sed "s@#password: <token>#@password: '$WEAVE_TOKEN'@g" > /tmp/weave-cortex.yml
 
-#JOBS=mongo-exporter:9111 redis-exporter:9112
+# Example:
+# CUSTOMJOBS="job-name='hostname1:80', 'hostname2:80';job-name2='hostname3:80', 'hostname4:80'"
+
+if [ ${CUSTOMJOBS+x} ]; then
+
+IFS=';' read -r -a array <<< "$CUSTOMJOBS"
+
+for index in "${!array[@]}"
+do
+    job_name=`echo ${array[index]} | awk -F '=' '{print$1}'`
+    job_value=`echo ${array[index]} | awk -F '=' '{print$2}'`
+    echo "adding job $job_name"
+
+cat >>/tmp/prometheus.yml <<EOF
+
+  - job_name: '${job_name}'
+    static_configs:
+      - targets: [
+        ${job_value}
+      ]
+EOF
+
 
 if [ ${JOBS+x} ]; then
 
@@ -15,14 +36,14 @@ echo "adding job $job"
 SERVICE=$(echo "$job" | cut -d":" -f1)
 PORT=$(echo "$job" | cut -d":" -f2)
 
-cat >>/tmp/prometheus.yml <<EOF
+# cat >>/tmp/prometheus.yml <<EOF
 
-  - job_name: '${SERVICE}'
-    static_configs:
-      - targets: [
-        '${SERVICE}'
-      ]
-EOF
+#   - job_name: '${SERVICE}'
+#     static_configs:
+#       - targets: [
+#         '${SERVICE}'
+#       ]
+# EOF
 
 cat >>/tmp/weave-cortex.yml <<EOF
 
