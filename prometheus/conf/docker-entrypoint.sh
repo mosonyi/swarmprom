@@ -9,12 +9,12 @@ cat /etc/prometheus/weave-cortex.yml | \
 
 if [ ${CUSTOMJOBS+x} ]; then
 
-IFS=';' read -r -a array <<< "$CUSTOMJOBS"
+IFS=';'
 
-for index in "${!array[@]}"
+for index in $CUSTOMJOBS
 do
-    job_name=`echo ${array[index]} | awk -F '=' '{print$1}'`
-    job_value=`echo ${array[index]} | awk -F '=' '{print$2}'`
+    job_name=`echo ${index} | awk -F '=' '{print$1}'`
+    job_value=`echo ${index} | awk -F '=' '{print$2}'`
     echo "adding job $job_name"
 
 cat >>/tmp/prometheus.yml <<EOF
@@ -26,6 +26,8 @@ cat >>/tmp/prometheus.yml <<EOF
       ]
 EOF
 
+done
+fi
 
 if [ ${JOBS+x} ]; then
 
