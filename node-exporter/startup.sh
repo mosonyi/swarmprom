@@ -2,7 +2,7 @@
 
 # set -e
 
-if [ "${NODE_ID}" == "" ]; then
+if [ "${NODE_ID}" = "" ]; then
     echo "ERROR: NODE_ID ENV is required for this container to run"
     exit 1
 fi
