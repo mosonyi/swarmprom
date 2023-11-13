@@ -49,3 +49,9 @@ scrape_configs:
       type: 'A'
       port: 3100
 
+  - job_name: 'promtail'
+    dns_sd_configs:
+    - names:
+      - 'tasks.promtail'
+      type: 'A'
+      port: 9080
