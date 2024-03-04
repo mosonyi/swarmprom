@@ -5,6 +5,7 @@ ENV NODE_ID ""
 
 USER root
 
-COPY startup.sh /
+COPY conf /etc/node-exporter/
 
-ENTRYPOINT  [ "/startup.sh" ]
+ENTRYPOINT  [ "/etc/node-exporter/docker-entrypoint.sh" ]
+CMD [ "/bin/node_exporter" ]
