@@ -2,6 +2,7 @@ auth_enabled: false
 
 server:
   http_listen_port: 3100
+  http_listen_address: 0.0.0.0
 
 ingester:
   lifecycler:
@@ -12,10 +13,6 @@ ingester:
       replication_factor: 1
   chunk_idle_period: 15m
   
-distributor:
-  ring:
-    instance_addr: 127.0.0.1
-    
 common:
   path_prefix: /loki
   storage:
