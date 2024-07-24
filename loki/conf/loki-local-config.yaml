@@ -12,6 +12,10 @@ ingester:
       replication_factor: 1
   chunk_idle_period: 15m
   
+distributor:
+  ring:
+    instance_addr: 127.0.0.1
+    
 common:
   path_prefix: /loki
   storage:
