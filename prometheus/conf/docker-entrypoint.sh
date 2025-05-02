@@ -20,8 +20,8 @@ do
 cat >>/tmp/prometheus.yml <<EOF
 
   - job_name: '${job_name}'
-    scrape_interval: 30s          # or keep the default
-    scrape_timeout: 20s           # increase timeout from default 10s    
+    scrape_interval: 2m          # or keep the default
+    scrape_timeout: 1m           # increase timeout from default 10s    
     static_configs:
       - targets: [
         ${job_value}
