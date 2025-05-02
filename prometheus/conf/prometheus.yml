@@ -41,6 +41,17 @@ scrape_configs:
       - 'tasks.node-exporter'
       type: 'A'
       port: 9100
+    relabel_configs:
+      # Extract hostname from node metadata
+      - source_labels: [__meta_dns_name]
+        regex: '(.*)\..*'
+        target_label: instance
+        replacement: '${1}'
+      # Relabel from the metric created by the script
+      - source_labels: [node_meta_nodename]
+        regex: '(.*)'
+        target_label: nodename
+        replacement: '${1}'
 
   - job_name: 'loki'
     dns_sd_configs:
